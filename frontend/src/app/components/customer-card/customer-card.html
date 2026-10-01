@@ -1,0 +1,35 @@
+<h2 style="margin-top: 0; color: #333;">Datos del Cliente</h2>
+
+<div *ngIf="customer; else noCustomer" style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+  <p style="margin: 5px 0;"><strong>DNI / NIF:</strong> {{ customer.tax_id }}</p>
+  <p style="margin: 5px 0;"><strong>Nombre:</strong> {{ customer.company_name }}</p>
+  <p style="margin: 5px 0;"><strong>Email:</strong> {{ customer.email }}</p>
+  <p style="margin: 5px 0;"><strong>País:</strong> {{ customer.country }}</p>
+  <p style="margin: 5px 0;">
+    <strong>Estado:</strong> 
+    <span style="color: white; background-color: #28a745; padding: 2px 8px; border-radius: 12px; font-size: 14px; margin-left: 5px;">Validado</span>
+  </p>
+
+  <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
+    <h4 style="margin: 0 0 10px 0; color: #0056b3;">Historial de Simulaciones</h4>
+    
+    <div *ngIf="historialSimulaciones.length > 0; else noSimulations" style="max-height: 150px; overflow-y: auto;">
+      <ul style="padding-left: 20px; margin: 0; font-size: 14px;">
+        <li *ngFor="let sim of historialSimulaciones" style="margin-bottom: 5px;">
+          <!-- Renderiza la divisa guardada dinámicamente -->
+          • <strong>{{ sim.active_users }}</strong> usos — <strong>{{ sim.calculated_cost | number:'1.2-2' }} {{ sim.currency }}</strong>
+        </li>
+      </ul>
+    </div>
+
+    <ng-template #noSimulations>
+      <p style="font-size: 13px; color: #666; font-style: italic; margin: 0;">Aún no hay simulaciones guardadas para este cliente.</p>
+    </ng-template>
+  </div>
+</div>
+
+<ng-template #noCustomer>
+  <p style="color: #666; font-style: italic; padding: 10px; background-color: #f0f0f0; border-radius: 4px;">
+    Esperando validación. Introduce un documento en el buscador superior.
+  </p>
+</ng-template>

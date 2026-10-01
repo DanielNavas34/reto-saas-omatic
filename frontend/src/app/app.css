@@ -1,0 +1,69 @@
+.main-container {
+  padding: 20px;
+  font-family: sans-serif;
+  max-width: 1200px; 
+  margin: 0 auto;    
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden; /* Corta cualquier desbordamiento horizontal rebelde */
+}
+
+.header {
+  margin-bottom: 30px;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.search-section {
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.grid-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.card {
+  /* En PC ocupan el 50%, en móvil saltarán solas gracias al media query inferior */
+  flex: 1 1 calc(50% - 20px); 
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-sizing: border-box; /* Impide que el padding agrande la tarjeta */
+}
+
+/* --- REGLAS PARA MÓVILES Y TABLETS --- */
+@media (max-width: 768px) {
+  .main-container {
+    padding: 10px; 
+  }
+  
+  .header h1 {
+    font-size: 1.4rem; 
+  }
+
+  .grid-container {
+    flex-direction: column; /* Apila las tarjetas */
+  }
+
+  .card {
+    flex: 1 1 100%; /* La tarjeta ocupa el 100% del ancho del móvil sin desbordar */
+    width: 100%;
+  }
+
+  app-simulation-form h3 {
+    font-size: 14px !important;
+  }
+  app-simulation-form p {
+    font-size: 20px !important; 
+  }
+}

@@ -1,0 +1,26 @@
+<main class="main-container">
+  <header class="header">
+    <h1>SaaS-O-Matic - Panel Comercial</h1>
+  </header>
+  
+  <section>
+    <div class="search-section">
+      <app-search (clienteEncontrado)="clienteActual = $event"></app-search>
+    </div>
+    
+    <div class="grid-container">
+      <div class="card">
+        <!-- Le pasamos el contador a la tarjeta -->
+        <app-customer-card [customer]="clienteActual" [refreshTrigger]="contadorRefresco"></app-customer-card>
+      </div>
+      
+      <div class="card">
+        <!-- Cada vez que se calcule un precio, incrementamos el contador -->
+        <app-simulation-form 
+          [customer]="clienteActual" 
+          (simulacionRealizada)="contadorRefresco = contadorRefresco + 1">
+        </app-simulation-form>
+      </div>
+    </div>
+  </section>
+</main>

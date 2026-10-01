@@ -1,0 +1,75 @@
+.search-panel {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.search-title {
+  margin-top: 0;
+  color: #003366;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+.search-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 columnas por defecto en PC */
+  gap: 15px;
+}
+
+.input-group label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #555;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* Vital para que no desborde hacia la derecha */
+  font-size: 14px;
+}
+
+.dual-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.search-button {
+  margin-top: 20px;
+  width: 100%;
+  background-color: #003366;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.search-button:hover {
+  background-color: #002244;
+}
+
+/* LA MAGIA RESPONSIVE PARA EL BUSCADOR */
+@media (max-width: 768px) {
+  .search-container {
+    grid-template-columns: 1fr; /* El buscador pasa a 1 sola columna vertical */
+  }
+  .dual-column {
+    grid-template-columns: 1fr; /* Los selectores de país y plan también se apilan */
+  }
+  .search-panel {
+    padding: 15px;
+  }
+}

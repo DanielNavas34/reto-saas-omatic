@@ -1,0 +1,43 @@
+<div class="search-panel">
+  <h3 class="search-title">Buscar o Registrar Cliente Corporativo</h3>
+  
+  <div class="search-container">
+    <div class="input-group">
+      <label>DNI / NIF / CIF *</label>
+      <input type="text" [(ngModel)]="cliente.tax_id" placeholder="Ej: 12345678Z" class="search-input">
+    </div>
+    
+    <div class="input-group">
+      <label>Nombre de la Empresa *</label>
+      <input type="text" [(ngModel)]="cliente.company_name" placeholder="Razón Social" class="search-input">
+    </div>
+    
+    <div class="input-group">
+      <label>Email de Contacto *</label>
+      <input type="email" [(ngModel)]="cliente.email" placeholder="correo@empresa.com" class="search-input">
+    </div>
+    
+    <div class="input-group dual-column">
+      <div class="select-wrapper">
+        <label>País</label>
+        <select [(ngModel)]="cliente.country" class="search-input">
+          <option value="España">España</option>
+          <option value="Estados Unidos">Estados Unidos</option>
+          <option value="Reino Unido">Reino Unido</option>
+        </select>
+      </div>
+      <div class="select-wrapper">
+        <label>Plan Elegido</label>
+        <select [(ngModel)]="cliente.plan_type" class="search-input">
+          <option value="Básico">Básico</option>
+          <option value="Pro">Pro</option>
+          <option value="Enterprise">Enterprise</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <button (click)="buscarCliente()" class="search-button">
+    Validar e Iniciar Simulación
+  </button>
+</div>

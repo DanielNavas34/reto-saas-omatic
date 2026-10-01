@@ -1,0 +1,49 @@
+<div>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+    <label style="font-weight: bold;">Volumen Estimado (Usos):</label>
+    <!-- Aquí inyectaremos los usuarios nativamente -->
+    <span #txtUsos style="background-color: #0056b3; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 14px;">
+      0 usuarios
+    </span>
+  </div>
+  
+  <input 
+    type="range" 
+    #miBarra
+    value="0"
+    (input)="alMoverBarra(miBarra.value)"
+    min="0" 
+    max="150" 
+    step="1"
+    style="width: 100%; cursor: pointer; accent-color: #0056b3;">
+</div>
+
+<div style="margin-top: 15px;">
+  <label style="font-weight: bold;">Moneda de Facturación:</label>
+  
+  <select 
+    #miSelector
+    (change)="alCambiarMoneda(miSelector.value)" 
+    style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="EUR">Euros (€) - Base</option>
+    <option value="USD">Dólares ($)</option>
+    <option value="GBP">Libras (£)</option>
+  </select>
+</div>
+
+<div style="margin-top: 20px; text-align: center; background-color: #e9ecef; padding: 15px; border-radius: 4px;">
+  <h3 style="margin: 0; color: #0056b3; font-size: 16px;">Proyección en Tiempo Real</h3>
+  <!-- Aquí inyectaremos el precio nativamente -->
+  <p #txtPrecio style="font-size: 26px; font-weight: bold; margin: 10px 0 0 0; color: #333;">
+    0.00 EUR
+  </p>
+</div>
+
+<button 
+  (click)="guardarSimulacion()" 
+  [disabled]="guardando || !customer"
+  [style.background-color]="exitoTransitorio ? '#20c997' : '#28a745'"
+  [style.opacity]="!customer ? '0.5' : '1'"
+  style="width: 100%; color: white; padding: 10px; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; transition: all 0.3s ease;">
+  {{ !customer ? 'Valida un cliente para poder guardar' : (guardando ? 'Guardando en BD...' : (exitoTransitorio ? '¡Guardado con Éxito!' : 'Guardar Simulación')) }}
+</button>

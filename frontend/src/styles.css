@@ -1,0 +1,15 @@
+/* You can add global styles to this file, and also import other style files */
+/* Contenedor que abraza a las dos tarjetas inferiores */
+.contenedor-paneles {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Dos columnas iguales en PC */
+  gap: 20px; /* Espacio entre las tarjetas */
+  margin-top: 20px;
+}
+
+/* LA MAGIA RESPONSIVE: Si la pantalla es más pequeña que una tablet (768px) */
+@media (max-width: 768px) {
+  .contenedor-paneles {
+    grid-template-columns: 1fr; /* Pasa a ser 1 sola columna (se apilan) */
+  }
+}
