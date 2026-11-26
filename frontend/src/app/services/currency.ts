@@ -1,20 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_URL } from '../api-url';
+import { ExchangeRates } from '../models';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CurrencyService {
-  // API pública y gratuita de tipos de cambio (base EUR)
-  private apiUrl = 'https://open.er-api.com/v6/latest/EUR';
+  constructor(private http: HttpClient) {}
 
-  constructor(private http: HttpClient) { }
-
-  /**
-   * Obtiene los tipos de cambio actuales actualizados.
-   */
-  getExchangeRates(): Observable<any> {
-    return this.http.get(this.apiUrl);
+  /** Rates published by the API. The saved price does not use a rate typed in the browser. */
+  getRates(): Observable<ExchangeRates> {
+    return this.http.get<ExchangeRates>(`${API_URL}/rates`);
   }
 }

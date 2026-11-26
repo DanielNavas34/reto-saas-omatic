@@ -1,36 +1,53 @@
-import { Component, Input, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ApiService, apiErrorMessage } from '../../services/api';
+import { Customer, Simulation } from '../../models';
 
 @Component({
   selector: 'app-customer-card',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './customer-card.html',
-  styleUrl: './customer-card.css'
+  styleUrl: './customer-card.css',
 })
 export class CustomerCard implements OnChanges {
-  @Input() customer: any = null; 
-  @Input() refreshTrigger: number = 0; 
-  historialSimulaciones: any[] = [];
+  @Input() customer: Customer | null = null;
+  @Input() latestSimulation: Simulation | null = null;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  historialSimulaciones: Simulation[] = [];
+  historialError = '';
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (this.customer && this.customer.id) {
-      this.cargarHistorial(this.customer.id);
-    } else {
+  constructor(private api: ApiService) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['customer']) {
       this.historialSimulaciones = [];
-      this.cdr.detectChanges();
+      this.historialError = '';
+      if (this.customer?.id) {
+        this.loadHistory(this.customer.id);
+      }
+      return;
+    }
+
+    if (
+      changes['latestSimulation'] &&
+      this.latestSimulation &&
+      this.customer?.id === this.latestSimulation.customer_id
+    ) {
+      this.loadHistory(this.customer.id);
     }
   }
 
-  cargarHistorial(customerId: number) {
-    fetch(`http://localhost:3000/simulations/customer/${customerId}`)
-      .then(res => res.json())
-      .then(data => {
-        this.historialSimulaciones = data;
-        this.cdr.detectChanges(); // <-- Actualiza la lista al instante
-      })
-      .catch(err => console.error('Error al cargar historial:', err));
+  private loadHistory(customerId: number): void {
+    this.api.getSimulations(customerId).subscribe({
+      next: (rows) => {
+        this.historialSimulaciones = rows;
+        this.historialError = '';
+      },
+      error: (err: HttpErrorResponse) => {
+        this.historialError = apiErrorMessage(err, 'No se pudo cargar el historial.');
+      },
+    });
   }
 }

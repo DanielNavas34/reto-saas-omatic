@@ -61,6 +61,20 @@
   background-color: #002244;
 }
 
+.form-error,
+.form-notice {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.form-error {
+  color: #9b1c1c;
+}
+
+.form-notice {
+  color: #0f5132;
+}
+
 /* LA MAGIA RESPONSIVE PARA EL BUSCADOR */
 @media (max-width: 768px) {
   .search-container {

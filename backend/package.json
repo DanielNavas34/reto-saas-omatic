@@ -4,8 +4,11 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "node server.js",
+    "pretest": "npm run build",
+    "test": "node --test test/api.test.js test/migrate.test.js dist/pricing.test.js dist/tax-id.test.js"
   },
   "keywords": [],
   "author": "",
@@ -15,5 +18,9 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.0"
   }
 }

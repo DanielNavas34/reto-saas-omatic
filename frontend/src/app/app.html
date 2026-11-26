@@ -5,20 +5,18 @@
   
   <section>
     <div class="search-section">
-      <app-search (clienteEncontrado)="clienteActual = $event"></app-search>
+      <app-search (customerFound)="onCustomerFound($event)"></app-search>
     </div>
     
     <div class="grid-container">
       <div class="card">
-        <!-- Le pasamos el contador a la tarjeta -->
-        <app-customer-card [customer]="clienteActual" [refreshTrigger]="contadorRefresco"></app-customer-card>
+        <app-customer-card [customer]="clienteActual" [latestSimulation]="ultimaSimulacion"></app-customer-card>
       </div>
       
       <div class="card">
-        <!-- Cada vez que se calcule un precio, incrementamos el contador -->
-        <app-simulation-form 
-          [customer]="clienteActual" 
-          (simulacionRealizada)="contadorRefresco = contadorRefresco + 1">
+        <app-simulation-form
+          [customer]="clienteActual"
+          (simulationSaved)="onSimulationSaved($event)">
         </app-simulation-form>
       </div>
     </div>

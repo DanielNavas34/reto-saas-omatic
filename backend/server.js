@@ -1,121 +1,221 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const db = require('./database/db'); 
+const { initDatabase, get, run, all } = require('./database/db');
+const { fetchRates } = require('./rates');
+const { parseCustomerBody, parseSimulationBody, quote } = require('./dist/domain');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const CUSTOMER_COLUMNS = 'id, company_name, tax_id, email, country, plan_type';
 
-app.use(cors({ origin: '*' }));
-app.use(express.json()); 
+function createApp(db, options = {}) {
+  const getRates = options.getRates || fetchRates;
+  const app = express();
 
-// ==========================================
-// FUNCIÓN DE VALIDACIÓN (DNI / NIE / CIF)
-// ==========================================
-function validarIdentificadorEspanol(id) {
-    const str = id.toUpperCase().trim();
-    const dniRegex = /^[0-9]{8}[A-Z]$/;
-    const nieRegex = /^[XYZ][0-9]{7}[A-Z]$/;
-    
-    if (dniRegex.test(str) || nieRegex.test(str)) {
-        let numero = str.substring(0, 8);
-        const letraOriginal = str.substring(8, 9);
-        if (nieRegex.test(str)) {
-            numero = numero.replace('X', '0').replace('Y', '1').replace('Z', '2');
-        }
-        return letraOriginal === 'TRWAGMYFPDXBNJZSQVHLCKE'[numero % 23];
+  app.use(cors({ origin: '*' }));
+  app.use(express.json());
+
+  app.get('/rates', async (_req, res) => {
+    try {
+      const rates = await getRates();
+      res.json({ EUR: 1, USD: rates.USD, GBP: rates.GBP });
+    } catch (err) {
+      console.error(err);
+      res.status(503).json({ error: 'No se pudieron obtener los tipos de cambio.' });
     }
-    
-    // Validación para CIF de empresas
-    return /^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(str);
+  });
+
+  app.post('/customers', async (req, res) => {
+    const parsed = parseCustomerBody(req.body);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+
+    try {
+      const existing = await findCustomerByTaxId(db, parsed.value.tax_id);
+      if (existing) {
+        res.status(200).json({ message: 'Recuperado', customer: existing });
+        return;
+      }
+
+      const inserted = await run(
+        db,
+        `INSERT INTO customers (company_name, tax_id, email, country, plan_type) VALUES (?, ?, ?, ?, ?)`,
+        [
+          parsed.value.company_name,
+          parsed.value.tax_id,
+          parsed.value.email,
+          parsed.value.country,
+          parsed.value.plan_type,
+        ],
+      );
+      const customer = await findCustomerById(db, inserted.lastID);
+      res.status(201).json({ message: 'Registrado', customer });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        const existing = await findCustomerByTaxId(db, parsed.value.tax_id);
+        if (existing) {
+          res.status(200).json({ message: 'Recuperado', customer: existing });
+          return;
+        }
+      }
+      console.error(err);
+      res.status(500).json({ error: 'Error de base de datos.' });
+    }
+  });
+
+  app.post('/quotes', async (req, res) => {
+    try {
+      const outcome = await priceSimulation(db, getRates, req.body);
+      if (outcome.error) {
+        res.status(outcome.status).json({ error: outcome.error });
+        return;
+      }
+      res.json(outcome.body);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Error de base de datos.' });
+    }
+  });
+
+  app.post('/simulations', async (req, res) => {
+    try {
+      const outcome = await priceSimulation(db, getRates, req.body);
+      if (outcome.error) {
+        res.status(outcome.status).json({ error: outcome.error });
+        return;
+      }
+
+      const inserted = await run(
+        db,
+        `INSERT INTO simulations (customer_id, active_users, storage_gb, api_calls, calculated_cost, currency)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          outcome.input.customer_id,
+          outcome.input.active_users,
+          outcome.input.storage_gb,
+          outcome.input.api_calls,
+          outcome.priced.amount,
+          outcome.priced.currency,
+        ],
+      );
+
+      res.status(201).json({
+        message: 'Simulación guardada',
+        simulation: {
+          id: inserted.lastID,
+          customer_id: outcome.input.customer_id,
+          active_users: outcome.input.active_users,
+          storage_gb: outcome.input.storage_gb,
+          api_calls: outcome.input.api_calls,
+          calculated_cost: outcome.priced.amount,
+          currency: outcome.priced.currency,
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Error interno al guardar la simulación.' });
+    }
+  });
+
+  app.get('/simulations/customer/:customerId', async (req, res) => {
+    const customerId = Number(req.params.customerId);
+    if (!Number.isInteger(customerId) || customerId < 1) {
+      res.status(400).json({ error: 'Cliente no válido.' });
+      return;
+    }
+
+    try {
+      const rows = await all(
+        db,
+        `SELECT id, customer_id, active_users, storage_gb, api_calls, calculated_cost, currency
+         FROM simulations WHERE customer_id = ? ORDER BY id DESC`,
+        [customerId],
+      );
+      res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Error de BD al recuperar historial.' });
+    }
+  });
+
+  return app;
 }
 
-// ==========================================
-// ENDPOINT 1: REGISTRAR / BUSCAR CLIENTE
-// ==========================================
-app.post('/customers', (req, res) => {
-    const { company_name, tax_id, email, country, plan_type } = req.body;
-    
-    // Validación de DNI/CIF obligatoria si el país es España
-    if (country && (country.toLowerCase() === 'españa' || country.toLowerCase() === 'spain')) {
-        if (!validarIdentificadorEspanol(tax_id)) {
-            return res.status(400).json({ error: 'Identificador fiscal no válido.' });
-        }
+async function priceSimulation(db, getRates, body) {
+  const parsed = parseSimulationBody(body);
+  if (!parsed.ok) {
+    return { status: 400, error: parsed.error };
+  }
+
+  const customer = await get(db, 'SELECT id, country FROM customers WHERE id = ?', [parsed.value.customer_id]);
+  if (!customer) {
+    return { status: 404, error: 'Cliente no encontrado.' };
+  }
+
+  let rates = { USD: 1, GBP: 1 };
+  if (parsed.value.currency !== 'EUR') {
+    try {
+      rates = await getRates();
+    } catch (err) {
+      console.error(err);
+      return { status: 503, error: 'No se pudieron obtener los tipos de cambio.' };
     }
+  }
 
-    db.get(`SELECT id FROM customers WHERE tax_id = ?`, [tax_id], (err, row) => {
-        if (err) return res.status(500).json({ error: 'Error de base de datos.' });
-        
-        // Si el cliente ya existe, lo devolvemos
-        if (row) return res.status(200).json({ message: 'Recuperado', customerId: row.id });
-        
-        // Si no existe, lo creamos
-        const query = `INSERT INTO customers (company_name, tax_id, email, country, plan_type) VALUES (?, ?, ?, ?, ?)`;
-        db.run(query, [company_name, tax_id, email, country, plan_type], function(err) {
-            if (err) return res.status(500).json({ error: 'Error al guardar el cliente.' });
-            res.status(201).json({ message: 'Registrado', customerId: this.lastID });
-        });
+  let priced;
+  try {
+    priced = quote({
+      activeUsers: parsed.value.active_users,
+      country: customer.country,
+      currency: parsed.value.currency,
+      rates,
     });
-});
+  } catch (err) {
+    console.error(err);
+    return { status: 503, error: 'No se pudieron obtener los tipos de cambio.' };
+  }
 
-// ==========================================
-// ENDPOINT 2: GUARDAR SIMULACIÓN (CÁLCULO SEGURO EN BACKEND)
-// ==========================================
-app.post('/simulations', (req, res) => {
-    const { customer_id, active_users, storage_gb, api_calls, calculated_cost, currency } = req.body;
-    
-    // 1. Buscamos el país del cliente en la Base de Datos para saber su IVA
-    db.get(`SELECT country FROM customers WHERE id = ?`, [customer_id], (err, row) => {
-        if (err) return res.status(500).json({ error: 'Error de BD al buscar cliente.' });
-        if (!row) return res.status(404).json({ error: 'Cliente no encontrado.' });
+  return {
+    input: parsed.value,
+    priced,
+    body: {
+      calculated_cost: priced.amount,
+      currency: priced.currency,
+      total_eur: priced.totalEur,
+      rate: priced.rate,
+      active_users: parsed.value.active_users,
+      storage_gb: parsed.value.storage_gb,
+      api_calls: parsed.value.api_calls,
+    },
+  };
+}
 
-        // 2. LÓGICA DE NEGOCIO EN EL BACKEND (Algoritmo por Tramos)
-        let u = Number(active_users) || 0;
-        let costeBase = 0;
+function findCustomerByTaxId(db, taxId) {
+  return get(db, `SELECT ${CUSTOMER_COLUMNS} FROM customers WHERE tax_id = ?`, [taxId]);
+}
 
-        if (u > 50) { costeBase += (u - 50) * 5; u = 50; }
-        if (u > 10) { costeBase += (u - 10) * 8; u = 10; }
-        if (u > 0) { costeBase += u * 10; }
+function findCustomerById(db, id) {
+  return get(db, `SELECT ${CUSTOMER_COLUMNS} FROM customers WHERE id = ?`, [id]);
+}
 
-        // 3. Aplicamos el Impuesto si es España (21%)
-        const pais = (row.country || '').toLowerCase();
-        let impuesto = 0;
-        if (pais === 'españa' || pais === 'spain') {
-            impuesto = 0.21;
-        }
+function isUniqueViolation(err) {
+  return err && (err.code === 'SQLITE_CONSTRAINT' || /UNIQUE/i.test(err.message || ''));
+}
 
-        const totalEurosBackend = costeBase + (costeBase * impuesto);
-
-        // 4. Mantenemos la divisa seleccionada sin depender de APIs en el backend
-        let precioFinal = totalEurosBackend;
-        
-        // Si el usuario eligió otra moneda, calculamos la tasa usando el dato que envió el frontend
-        if (currency && currency !== 'EUR' && calculated_cost > 0 && totalEurosBackend > 0) {
-            const tasaCambio = calculated_cost / totalEurosBackend;
-            precioFinal = totalEurosBackend * tasaCambio;
-        }
-
-        const precioFinalValidado = Number(precioFinal.toFixed(2));
-
-        // 5. Guardamos en SQLite el precio auditado y validado por nosotros
-        const query = `INSERT INTO simulations (customer_id, active_users, storage_gb, api_calls, calculated_cost, currency) VALUES (?, ?, ?, ?, ?, ?)`;
-        db.run(query, [customer_id, active_users, storage_gb, api_calls, precioFinalValidado, currency || 'EUR'], function(err) {
-            if (err) return res.status(500).json({ error: 'Error interno al guardar la simulación.' });
-            res.status(201).json({ message: 'Simulación guardada', simulationId: this.lastID });
-        });
+if (require.main === module) {
+  const filename = process.env.SQLITE_PATH || path.join(__dirname, 'database.sqlite');
+  initDatabase(filename)
+    .then((db) => {
+      const port = process.env.PORT || 3000;
+      createApp(db).listen(port, () => {
+        console.log(`Backend en http://localhost:${port}`);
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
     });
-});
+}
 
-// ==========================================
-// ENDPOINT 3: OBTENER HISTORIAL DE SIMULACIONES
-// ==========================================
-app.get('/simulations/customer/:customerId', (req, res) => {
-    db.all(`SELECT * FROM simulations WHERE customer_id = ? ORDER BY id DESC`, [req.params.customerId], (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Error de BD al recuperar historial.' });
-        res.json(rows);
-    });
-});
-
-// ==========================================
-// ARRANQUE DEL SERVIDOR
-// ==========================================
-app.listen(PORT, () => console.log(`Backend en http://localhost:${PORT}`));
+module.exports = { createApp };

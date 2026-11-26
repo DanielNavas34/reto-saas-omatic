@@ -1,34 +1,40 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_URL } from '../api-url';
+import {
+  CustomerDraft,
+  CustomerResponse,
+  Quote,
+  Simulation,
+  SimulationDraft,
+  SimulationResponse,
+} from '../models';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ApiService {
-  // La dirección donde está escuchando tu servidor Node.js
-  private apiUrl = 'http://localhost:3000'; 
+  constructor(private http: HttpClient) {}
 
-  constructor(private http: HttpClient) { }
-
-  /**
-   * Envía los datos del formulario al backend para registrar un cliente
-   * y que el backend valide el DNI/NIF.
-   */
-  registrarCliente(clienteData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/customers`, clienteData);
+  registerCustomer(draft: CustomerDraft): Observable<CustomerResponse> {
+    return this.http.post<CustomerResponse>(`${API_URL}/customers`, draft);
   }
 
-  /**
-   * Envía los datos de uso para que el backend calcule los tramos 
-   * y devuelva el precio total con impuestos.
-   */
-  calcularSimulacion(simulacionData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/simulations`, simulacionData);
+  quoteSimulation(draft: SimulationDraft): Observable<Quote> {
+    return this.http.post<Quote>(`${API_URL}/quotes`, draft);
   }
 
-  // Obtener simulaciones por ID de cliente
-  obtenerHistorialSimulaciones(customerId: number): Observable<any> {
-    return this.http.get(`http://localhost:3000/simulations/customer/${customerId}`);
+  saveSimulation(draft: SimulationDraft): Observable<SimulationResponse> {
+    return this.http.post<SimulationResponse>(`${API_URL}/simulations`, draft);
   }
+
+  getSimulations(customerId: number): Observable<Simulation[]> {
+    return this.http.get<Simulation[]>(`${API_URL}/simulations/customer/${customerId}`);
+  }
+}
+
+export function apiErrorMessage(err: HttpErrorResponse, fallback: string): string {
+  const body = err.error as { error?: string } | null;
+  return body?.error || fallback;
 }

@@ -1,15 +1,32 @@
 import { TestBed } from '@angular/core/testing';
-import { Currency } from './currency';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { CurrencyService } from './currency';
 
-describe('Currency', () => {
-  let service: Currency;
+describe('CurrencyService', () => {
+  let service: CurrencyService;
+  let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(Currency);
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(CurrencyService);
+    http = TestBed.inject(HttpTestingController);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  afterEach(() => {
+    http.verify();
+  });
+
+  it('loads exchange rates from the backend', () => {
+    service.getRates().subscribe((rates) => {
+      expect(rates.USD).toBe(1.1);
+      expect(rates.GBP).toBe(0.85);
+    });
+
+    const req = http.expectOne('http://localhost:3000/rates');
+    expect(req.request.method).toBe('GET');
+    req.flush({ EUR: 1, USD: 1.1, GBP: 0.85 });
   });
 });
